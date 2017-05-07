@@ -234,38 +234,6 @@ system.time ( {
   event_haha <- event_test[with(event_test, order(user_id, time))]
 } )
 
-system.time (
-  {
-    i <- 1
-    for(userId in output_sample[, 1]) {
-      print(i)
-      if(i > 1000) {
-        break;
-      }
-      i <- i + 1
-    }
-  }
-)
-system.time (
-  {
-    i <- 1
-    sample <- event_test
-    for(userId in output_sample[, 1]) {
-      print(length(sample$title_id))
-      index <- (sample$user_id == userId)
-      temp <- sample[index, ]
-      #sample <- sample[-c(index), ]
-      
-      getLastWatchedTitleIdByOneUserFun(temp)
-      if(i > 10) {
-        break;
-      }
-      i <- i + 1
-    }
-  }
-)
-
-
 result <- compareResultFun(output, labels_train)
 #### To calculate system time ####
 old <- Sys.time() # get start time
@@ -277,6 +245,7 @@ print(new) # print in nice format
 summary(unique(event_test[c("user_id")]))
 
 #### To generate Output data ####
+output <- output0507
 output$user_id <- str_pad(output$user_id, 8, pad = "0")
 output$title_id <- str_pad(output$title_id, 8, pad = "0")
 write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quote = FALSE)
