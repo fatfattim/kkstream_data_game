@@ -173,12 +173,6 @@ toGetDFByLabelDataFun <- function (label_data, train_data) {
 notmatched <- labels_train[(labels_compare$title_id != labels_train$title_id ), ]
 notmatched <- notmatched[sample(nrow(notmatched), 20), ]
 dd <- toGetDFByLabelDataFun(notmatched, event_train)
-dd <- dd[dd$user_id == dd$user_id[1], ]
-event_train$user_id == dd$user_id[1]
-system.time (
-  {event_train[event_train$user_id == dd$user_id[1], ]
-  print('hi')}
-)
 toConcludeDataByOneUserFun <- function(user_data) {
   output <- data.frame()
   i <- 1
@@ -210,7 +204,11 @@ getResultByLastWatchedTitleId <- function(userData , trainData, limit) {
     
     userId <- as.numeric(userId)
     titleId <-getLastWatchedTitleIdByOneUserFun(trainData[trainData$user_id == userId, ])
-    print(titleId)
+    
+    if ((i %% 100) == 0) {
+      print(i)  
+    }
+    
     output[i, names(userData)[1]] <- userId
     output[i, names(userData)[2]] <- titleId
     
@@ -225,8 +223,50 @@ getResultByLastWatchedTitleId <- function(userData , trainData, limit) {
 #output <- toConcludeDataByOneUserFun(dd)
 testId <- getLastWatchedTitleIdByOneUserFun(dd)
 output <- getResultByLastWatchedTitleId(labels_train, event_train, 500)
+output0507 <- getResultByLastWatchedTitleId(output_sample, event_test, -1)
+for(userId in output_sample[, 1]) {
+  print(userId)
+}
+
+event_haha <- event_test
+event_haha$time <- format(anytime(event_haha$time), format="%Y%m%d%H")
+system.time ( {
+  event_haha <- event_test[with(event_test, order(user_id, time))]
+} )
+
+system.time (
+  {
+    i <- 1
+    for(userId in output_sample[, 1]) {
+      print(i)
+      if(i > 1000) {
+        break;
+      }
+      i <- i + 1
+    }
+  }
+)
+system.time (
+  {
+    i <- 1
+    sample <- event_test
+    for(userId in output_sample[, 1]) {
+      print(length(sample$title_id))
+      index <- (sample$user_id == userId)
+      temp <- sample[index, ]
+      #sample <- sample[-c(index), ]
+      
+      getLastWatchedTitleIdByOneUserFun(temp)
+      if(i > 10) {
+        break;
+      }
+      i <- i + 1
+    }
+  }
+)
 
 
+result <- compareResultFun(output, labels_train)
 #### To calculate system time ####
 old <- Sys.time() # get start time
 # method here
