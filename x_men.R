@@ -80,8 +80,8 @@ famousVideoFun <- function(df) {
 }
 
 compareResultFun <- function(compareData, resultData) {
-  matched <- length(labels_train[(labels_compare$title_id == labels_train$title_id ), ]$title_id)
-  result <- matched / length(labels_train$title_id)
+  matched <- length(resultData[(resultData$title_id == compareData$title_id ), ]$title_id)
+  result <- matched / length(resultData$title_id)
   return(result)
 }
 
@@ -221,25 +221,25 @@ getResultByLastWatchedTitleId <- function(userData , trainData, limit) {
 }
 
 #output <- toConcludeDataByOneUserFun(dd)
-testId <- getLastWatchedTitleIdByOneUserFun(dd)
-output <- getResultByLastWatchedTitleId(labels_train, event_train, 500)
 output0507 <- getResultByLastWatchedTitleId(output_sample, event_test, -1)
-for(userId in output_sample[, 1]) {
-  print(userId)
-}
-
-event_haha <- event_test
-event_haha$time <- format(anytime(event_haha$time), format="%Y%m%d%H")
-system.time ( {
-  event_haha <- event_test[with(event_test, order(user_id, time))]
-} )
 
 result <- compareResultFun(output, labels_train)
+
+#### Solution 3 : Compare Solution 1 with 2 ####
+# 1. 
+output$title_id <- 669
+result <- compareResultFun(output, output0507)
+
+
 #### To calculate system time ####
 old <- Sys.time() # get start time
 # method here
 new <- Sys.time() - old # calculate difference
 print(new) # print in nice format
+
+system.time ( {
+  event_haha <- event_test[with(event_test, order(user_id, time))]
+} )
 
 #### To handle test data from events_test.csv ####
 summary(unique(event_test[c("user_id")]))
