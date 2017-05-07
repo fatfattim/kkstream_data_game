@@ -1,5 +1,7 @@
 ##### Load Data from csv #####
 library("rjson")
+library(anytime)
+library(stringr)
 
 event_train <-
   read.csv('~/Desktop/data_game/events_train.csv', stringsAsFactors = F)
@@ -143,11 +145,6 @@ output <- filterWatchedVideoFun(output, event_test, famous2017)
 
 unique(output$title_id)
 
-library(stringr)
-output$user_id <- str_pad(output$user_id, 8, pad = "0")
-output$title_id <- str_pad(output$title_id, 8, pad = "0")
-write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quote = FALSE)
-
 #### Solution 2 : To trace user not watch complete video ####
 # 1. Get famous videos from label_train 
 # 2. (count, rowIndex) : 4666 , 13569
@@ -176,18 +173,59 @@ toGetDFByLabelDataFun <- function (label_data, train_data) {
 notmatched <- labels_train[(labels_compare$title_id != labels_train$title_id ), ]
 notmatched <- notmatched[sample(nrow(notmatched), 20), ]
 dd <- toGetDFByLabelDataFun(notmatched, event_train)
-dd <- dd[dd$user_id == 88809, ]
-
-for(titleId in unique(dd$title_id)) {
-  print(titleId)
-}
-
-buildUserTypeFun <- function (df) {
+dd <- dd[dd$user_id == dd$user_id[1], ]
+event_train$user_id == dd$user_id[1]
+system.time (
+  {event_train[event_train$user_id == dd$user_id[1], ]
+  print('hi')}
+)
+toConcludeDataByOneUserFun <- function(user_data) {
   output <- data.frame()
+  i <- 1
+  for(titleId in unique(user_data$title_id)) {
+    tempData <- user_data[user_data$title_id %in% titleId,]
+    tempData <- tempData[(order(format(anytime(tempData$time), format="%Y%m%d%H"))),]
+    
+    output[i, 'title_id'] <- titleId
+    output[i, 'title_name'] <- tempData$title_name[1]
+    output[i, 'last_watch_time'] <- tempData[length(tempData$time), ]$time
+    output[i, 'total_watch_time'] <- sum(tempData$watch_time)
+    print(titleId)
+    i <- i + 1
+  }
   return(output)
 }
 
-meta <- df_video_meta[as.numeric(df_video_meta$title_id) %in% unique(dd$`2017_title_id`), ]
+getLastWatchedTitleIdByOneUserFun <- function(user_data) {
+  temp <- user_data[(order(format(anytime(user_data$time), format="%Y%m%d%H"))),]
+  titleId <- temp[length(temp$time), ]$title_id
+  return(titleId)
+}
+
+getResultByLastWatchedTitleId <- function(userData , trainData, limit) {
+  output <- data.frame()
+  user_ids <- userData[, 1]
+  i <- 1
+  for(userId in user_ids) {
+    
+    userId <- as.numeric(userId)
+    titleId <-getLastWatchedTitleIdByOneUserFun(trainData[trainData$user_id == userId, ])
+    print(titleId)
+    output[i, names(userData)[1]] <- userId
+    output[i, names(userData)[2]] <- titleId
+    
+    i <- i + 1
+    if(i > limit && limit > 0) {
+      break;
+    }
+  }
+  return(output)
+}
+
+#output <- toConcludeDataByOneUserFun(dd)
+testId <- getLastWatchedTitleIdByOneUserFun(dd)
+output <- getResultByLastWatchedTitleId(labels_train, event_train, 500)
+
 
 #### To calculate system time ####
 old <- Sys.time() # get start time
@@ -197,3 +235,8 @@ print(new) # print in nice format
 
 #### To handle test data from events_test.csv ####
 summary(unique(event_test[c("user_id")]))
+
+#### To generate Output data ####
+output$user_id <- str_pad(output$user_id, 8, pad = "0")
+output$title_id <- str_pad(output$title_id, 8, pad = "0")
+write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quote = FALSE)
