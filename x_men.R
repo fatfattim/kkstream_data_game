@@ -228,8 +228,23 @@ result <- compareResultFun(output, labels_train)
 #### Solution 3 : Compare Solution 1 with 2 ####
 # 1. 
 output$title_id <- 669
-result <- compareResultFun(output, output0507)
+result <- output[output$title_id == output0507$title_id, ]
+sortedTest <- event_test[with(event_test, order(user_id)), ]
+result$user_id[1]
 
+userData <- getDataByUserIdFun(sortedTest, as.numeric(result$user_id[2]))
+test <- sumOfTotalEpisodeFun(f_video_meta)
+sumOfTotalEpisodeFun <- function(df) {
+  df$total_episode_counts <- lapply(df$total_episode_counts, function(x) {
+    sum(as.integer(strsplit(x, ",")[[1]]))
+  })
+  return(df)
+}
+
+
+test <- strsplit(df_video_meta[[total_episode_counts]], ",")[[1]]
+
+test$total_episode_counts <- sum(as.integer(strsplit(df_video_meta$total_episode_counts,",")[[1]]))
 
 #### To calculate system time ####
 old <- Sys.time() # get start time
