@@ -53,7 +53,6 @@ converterFun <- function(video_meta) {
     
     for (columnName in testNames) {
       value <- test[[columnName]]
-      print(columnName)
       if(columnName == 'total_episode_counts') {
         concatedStrArray <- paste(value)
         value <- paste(concatedStrArray, collapse = ',')
@@ -82,6 +81,15 @@ compareResultFun <- function(compareData, resultData) {
   matched <- length(labels_train[(labels_compare$title_id == labels_train$title_id ), ]$title_id)
   result <- matched / length(labels_train$title_id)
   return(result)
+}
+
+getDataByUserIdFun <- function(df, userId) {
+  return(df[which(df$user_id == userId), ])
+}
+
+findTitleIdByUserIdFun <- function(id, twoColumnDF) {
+  index <- match(c(id), twoColumnDF[, 1])
+  return(twoColumnDF[index, ]$title_id)
 }
 
 df_video_meta <- converterFun(video_meta)
@@ -142,16 +150,50 @@ write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quo
 
 #### Solution 2 : To trace user not watch complete video ####
 # 1. Get famous videos from label_train 
+# 2. (count, rowIndex) : 4666 , 13569
 labels_compare <- labels_train
 labels_compare$title_id <- 669
-test <- compareResultFun(labels_compare, labels_train)
 
+matched <- labels_train[(labels_compare$title_id == labels_train$title_id ), ]
+toGetDFByLabelDataFun <- function (label_data, train_data) {
+  count <- 0
+  result <- data.frame()
+  for(i in 1:nrow(label_data)) {
+    row <- label_data[i,]
+    test <- getDataByUserIdFun(train_data, row$user_id)
+    if(length(which(test$title_id == row$title_id)) >0) {
+      test[["2017_title_id"]] <- row$title_id
+      result <- rbind(result,test)
+      cat(sprintf("(count, rowIndex) %s , %s\n", count, i))
+      count <- count + 1
+    }
+  }
+  return (result)
+}
+
+# To find user will watch previous video before 2016 in 2017
+# To get sample data from not matmatched
 notmatched <- labels_train[(labels_compare$title_id != labels_train$title_id ), ]
-notmatched$user_id[1]
-test <- event_train[which(event_train$user_id == notmatched$user_id[1]), ]
-data <- df_video_meta[which(as.numeric(df_video_meta$title_id) == notmatched$title_id[1]), ]
+notmatched <- notmatched[sample(nrow(notmatched), 20), ]
+dd <- toGetDFByLabelDataFun(notmatched, event_train)
+dd <- dd[dd$user_id == 88809, ]
 
-matched <- length(labels_train[(labels_compare$title_id == labels_train$title_id ), ]$title_id)
+for(titleId in unique(dd$title_id)) {
+  print(titleId)
+}
+
+buildUserTypeFun <- function (df) {
+  output <- data.frame()
+  return(output)
+}
+
+meta <- df_video_meta[as.numeric(df_video_meta$title_id) %in% unique(dd$`2017_title_id`), ]
+
+#### To calculate system time ####
+old <- Sys.time() # get start time
+# method here
+new <- Sys.time() - old # calculate difference
+print(new) # print in nice format
 
 #### To handle test data from events_test.csv ####
 summary(unique(event_test[c("user_id")]))
