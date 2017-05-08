@@ -222,30 +222,106 @@ getResultByLastWatchedTitleId <- function(userData , trainData, limit) {
 
 #output <- toConcludeDataByOneUserFun(dd)
 output0507 <- getResultByLastWatchedTitleId(output_sample, event_test, -1)
-
 result <- compareResultFun(output, labels_train)
 
 #### Solution 3 : Compare Solution 1 with 2 ####
-# 1. 
-output$title_id <- 669
-result <- output[output$title_id == output0507$title_id, ]
-sortedTest <- event_test[with(event_test, order(user_id)), ]
-result$user_id[1]
-
-userData <- getDataByUserIdFun(sortedTest, as.numeric(result$user_id[2]))
-test <- sumOfTotalEpisodeFun(f_video_meta)
+# 1. Add sum of total function for video meta data
 sumOfTotalEpisodeFun <- function(df) {
   df$total_episode_counts <- lapply(df$total_episode_counts, function(x) {
     sum(as.integer(strsplit(x, ",")[[1]]))
   })
+  df$total_episode_counts <- unlist(df$total_episode_counts)
   return(df)
 }
 
+findMildUserFun <- function(df, mildCount) {
+  output <- data.frame()
+  usertable <- as.data.frame(table(df$user_id))
+  colnames(usertable)[1] <- "user_id"
+  print(length(1:nrow(usertable[usertable$Freq < mildCount, ])))
+  output <- usertable[usertable$Freq < mildCount, ]
+  return (output)
+}
 
-test <- strsplit(df_video_meta[[total_episode_counts]], ",")[[1]]
+sortedTest <- event_train[with(event_train, order(user_id)), ]
+mildUser <- findMildUserFun(sortedTest , 3)
 
-test$total_episode_counts <- sum(as.integer(strsplit(df_video_meta$total_episode_counts,",")[[1]]))
+concludeDataByMildUser <- function(mild_user, train_data, train_result) {
+  output <- data.frame()
+  i <- 1
+  for(userId in unique(mildUser$user_id)) {
+    tempData <- train_data[train_data$user_id == userId,]
+    
+    tempData['result'] <- labels_train[labels_train$user_id == userId ,]$title_id
+    output <- rbind(output, tempData)
+    print(i)
+    i <- i + 1
+    if( i > 5) {
+      break;
+    }
+  }
+  return(output)
+}
 
+concludeDataByMildUser <- function(mildUser, train_data, train_result) {
+  output <- train_data[train_data$user_id %in% as.vector(mildUser$user_id),]
+  output['result'] <- -1
+  i<-1
+  for(userId in mildUser$user_id) {
+    output[output$user_id == userId, ]$result <- train_result[train_result$user_id == userId, ]$title_id
+    i <- i + 1
+    print(i)
+  }
+  return(output)
+}
+
+output <- concludeDataByMildUser(mildUser, event_train, labels_train)
+mildUser$user_id
+
+testMildUser <- mildUser[sample(nrow(mildUser), 3), ]
+
+tempData <- event_train[event_train$user_id %in% as.vector(mildUser$user_id),]
+usertable <- as.data.frame(table(event_train$user_id))
+tempData1 <-usertable[usertable$Freq < 3, ]
+
+getVideoMetaByTitleIdsFun <- function(videoMeta, titleIds) {
+  return(videoMeta [as.integer(videoMeta$title_id)  %in%  c(titleIds), ])
+}
+
+system.time ( {
+  i < 1
+  for(userId in event_train$user_id) {
+    print(i)
+    i <- i + 1
+  }
+} )
+beautiful_meta <- sumOfTotalEpisodeFun(df_video_meta)
+
+getDataByUserWatchedSingleType <- function (df, result, episode_limit) {
+  output <- data.frame()
+  for(i in 1:nrow(result)) {
+    row <- result[i,]
+    videoMeta <- test[as.integer(df$title_id) == row$title_id, ]
+    
+    if(videoMeta$total_episode_counts < episode_limit) {
+      index <- nrow(output) + 1
+      output[index, names(result)[1]] <- row$user_id
+      output[index, names(result)[2]] <- row$title_id
+      print(i)
+    }
+    
+  }
+  return (output)
+}
+result <- getDataByUserWatchedSingleType(test , output0507, 5)
+
+# Group data by table way
+# as.data.frame(table(result$title_id))
+result$user_id[1]
+userData <- getDataByUserIdFun(sortedTest, 29)
+class(df_video_meta$themes)
+df_video_meta$themes
+haha <- df_video_meta[grepl("音樂", df_video_meta$themes), ]
 #### To calculate system time ####
 old <- Sys.time() # get start time
 # method here
@@ -260,7 +336,7 @@ system.time ( {
 summary(unique(event_test[c("user_id")]))
 
 #### To generate Output data ####
-output <- output0507
+output <- famous2017
 output$user_id <- str_pad(output$user_id, 8, pad = "0")
 output$title_id <- str_pad(output$title_id, 8, pad = "0")
-write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quote = FALSE)
+write.csv(output, file = "~/Desktop/data_game/famous2017.csv", row.names=FALSE,  quote = FALSE)
