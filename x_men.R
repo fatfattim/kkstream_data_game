@@ -267,19 +267,25 @@ getVideoMetaByTitleIdsFun <- function(videoMeta, titleIds) {
   return(videoMeta [as.integer(videoMeta$title_id)  %in%  c(titleIds), ])
 }
 
-#Remove unnecessary information
+#### To get beautiful meta data of video ####
 beautiful_meta <- sumOfTotalEpisodeFun(df_video_meta)
 beautiful_meta$title_id <- as.integer(beautiful_meta$title_id)
 drops <- c("title_type","content_providers" , "copyright", "ordered_casts", "is_ending", "updated_at", "reverse_display_order", "content_agents" , "stills" , "tags" , "title_aliases", "wiki_zh" , "extra_title_id" , "characteristic" , "cover", "ost" , "producers", "wiki_orig", "has_series")
 beautiful_meta <- beautiful_meta[ , !(names(beautiful_meta) %in% drops)]
 names(beautiful_meta)
-result <- getDataByUserWatchedSingleType(test , output0507, 5)
-#Only watch one item
-ha <- findMildUserFun(train_mild_user , 2)
-ha <- concludeDataByMildUser(ha, event_train, labels_train)
 
-nrow(ha[ha$title_id != ha$result ,])
-nrow(ha[ha$title_id == 669 ,])
+#### To seperate group ####
+train_set1 <- subset(event_train, event_train$user_id <= 57116)
+train_set2 <- subset(event_train, event_train$user_id > 57116 & event_train$user_id <= 72692)
+train_set3 <- subset(event_train, event_train$user_id > 72692 & event_train$user_id <= 88268)
+train_set4 <- subset(event_train, event_train$user_id > 88268)
+#check sum
+nrow(train_set1) + nrow(train_set2) + nrow(train_set3) + nrow(train_set4) 
+summary(labels_train)
+mylist <- split(event_train, event_train$user_id)
+quantile(labels_train$user_id)
+which(labels_train$user_id == 57116)
+which(labels_train$user_id == 72692)
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
