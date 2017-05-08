@@ -272,6 +272,7 @@ beautiful_meta <- sumOfTotalEpisodeFun(df_video_meta)
 beautiful_meta$title_id <- as.integer(beautiful_meta$title_id)
 drops <- c("title_type","content_providers" , "copyright", "ordered_casts", "is_ending", "updated_at", "reverse_display_order", "content_agents" , "stills" , "tags" , "title_aliases", "wiki_zh" , "extra_title_id" , "characteristic" , "cover", "ost" , "producers", "wiki_orig", "has_series")
 beautiful_meta <- beautiful_meta[ , !(names(beautiful_meta) %in% drops)]
+beautiful_meta[beautiful_meta$country == "不使用", ]
 names(beautiful_meta)
 
 #### To seperate group ####
@@ -281,11 +282,18 @@ train_set3 <- subset(event_train, event_train$user_id > 72692 & event_train$user
 train_set4 <- subset(event_train, event_train$user_id > 88268)
 #check sum
 nrow(train_set1) + nrow(train_set2) + nrow(train_set3) + nrow(train_set4) 
-summary(labels_train)
-mylist <- split(event_train, event_train$user_id)
-quantile(labels_train$user_id)
-which(labels_train$user_id == 57116)
-which(labels_train$user_id == 72692)
+
+train_set1['user_type'] <- 0
+train_set1['favorite_type'] <- NA
+mylist <- split(train_set1, train_set1$user_id)
+unique(beautiful_meta$country)
+
+haha1 <- do.call(rbind.data.frame, lapply(mylist, function(y) {
+  output <- data.frame()
+  output[1, 'user_id'] <- 0
+  output[1, 'title_id'] <- 1
+  output
+}))
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
