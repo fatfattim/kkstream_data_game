@@ -14,6 +14,9 @@ video_meta  <- fromJSON(file = con)
 output_sample  <-
   read.csv('~/Desktop/data_game/sample.csv', stringsAsFactors = F)
 
+train_mild_user <-
+  read.csv('~/Desktop/data_game/train_mild_user.csv', stringsAsFactors = F)
+
 event_test <-
   read.csv('~/Desktop/data_game/events_test.csv', stringsAsFactors = F)
 
@@ -246,23 +249,6 @@ findMildUserFun <- function(df, mildCount) {
 sortedTest <- event_train[with(event_train, order(user_id)), ]
 mildUser <- findMildUserFun(sortedTest , 3)
 
-concludeDataByMildUser <- function(mild_user, train_data, train_result) {
-  output <- data.frame()
-  i <- 1
-  for(userId in unique(mildUser$user_id)) {
-    tempData <- train_data[train_data$user_id == userId,]
-    
-    tempData['result'] <- labels_train[labels_train$user_id == userId ,]$title_id
-    output <- rbind(output, tempData)
-    print(i)
-    i <- i + 1
-    if( i > 5) {
-      break;
-    }
-  }
-  return(output)
-}
-
 concludeDataByMildUser <- function(mildUser, train_data, train_result) {
   output <- train_data[train_data$user_id %in% as.vector(mildUser$user_id),]
   output['result'] <- -1
@@ -276,43 +262,13 @@ concludeDataByMildUser <- function(mildUser, train_data, train_result) {
 }
 
 output <- concludeDataByMildUser(mildUser, event_train, labels_train)
-mildUser$user_id
-
-testMildUser <- mildUser[sample(nrow(mildUser), 3), ]
-
-tempData <- event_train[event_train$user_id %in% as.vector(mildUser$user_id),]
-usertable <- as.data.frame(table(event_train$user_id))
-tempData1 <-usertable[usertable$Freq < 3, ]
 
 getVideoMetaByTitleIdsFun <- function(videoMeta, titleIds) {
   return(videoMeta [as.integer(videoMeta$title_id)  %in%  c(titleIds), ])
 }
 
-system.time ( {
-  i < 1
-  for(userId in event_train$user_id) {
-    print(i)
-    i <- i + 1
-  }
-} )
 beautiful_meta <- sumOfTotalEpisodeFun(df_video_meta)
-
-getDataByUserWatchedSingleType <- function (df, result, episode_limit) {
-  output <- data.frame()
-  for(i in 1:nrow(result)) {
-    row <- result[i,]
-    videoMeta <- test[as.integer(df$title_id) == row$title_id, ]
-    
-    if(videoMeta$total_episode_counts < episode_limit) {
-      index <- nrow(output) + 1
-      output[index, names(result)[1]] <- row$user_id
-      output[index, names(result)[2]] <- row$title_id
-      print(i)
-    }
-    
-  }
-  return (output)
-}
+beautiful_meta$title_id <- as.integer(beautiful_meta$title_id)
 result <- getDataByUserWatchedSingleType(test , output0507, 5)
 
 # Group data by table way
@@ -336,7 +292,7 @@ system.time ( {
 summary(unique(event_test[c("user_id")]))
 
 #### To generate Output data ####
-output <- famous2017
+output <- beautiful_meta
 output$user_id <- str_pad(output$user_id, 8, pad = "0")
 output$title_id <- str_pad(output$title_id, 8, pad = "0")
-write.csv(output, file = "~/Desktop/data_game/famous2017.csv", row.names=FALSE,  quote = FALSE)
+write.csv(output, file = "~/Desktop/data_game/beautiful_meta.csv", row.names=FALSE,  quote = FALSE)
