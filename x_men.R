@@ -267,9 +267,19 @@ getVideoMetaByTitleIdsFun <- function(videoMeta, titleIds) {
   return(videoMeta [as.integer(videoMeta$title_id)  %in%  c(titleIds), ])
 }
 
+#Remove unnecessary information
 beautiful_meta <- sumOfTotalEpisodeFun(df_video_meta)
 beautiful_meta$title_id <- as.integer(beautiful_meta$title_id)
+drops <- c("title_type","content_providers" , "copyright", "ordered_casts", "is_ending", "updated_at", "reverse_display_order", "content_agents" , "stills" , "tags" , "title_aliases", "wiki_zh" , "extra_title_id" , "characteristic" , "cover", "ost" , "producers", "wiki_orig", "has_series")
+beautiful_meta <- beautiful_meta[ , !(names(beautiful_meta) %in% drops)]
+names(beautiful_meta)
 result <- getDataByUserWatchedSingleType(test , output0507, 5)
+#Only watch one item
+ha <- findMildUserFun(train_mild_user , 2)
+ha <- concludeDataByMildUser(ha, event_train, labels_train)
+
+nrow(ha[ha$title_id != ha$result ,])
+nrow(ha[ha$title_id == 669 ,])
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
