@@ -292,31 +292,19 @@ mylist <- split(train_set1, train_set1$user_id)
 
 haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
   output <- data.frame()
-  class(user_data)
-  temp <- user_data[(order(format(anytime(user_data$time), format="%Y%m%d%H"))), ]
-  # titleId <- temp[length(temp$time), ]$title_id
-  # output[1, 'user_id'] <- user_data$user_id
-  # output[1, 'title_id'] <- titleId
-  print(format(anytime(user_data$time), format="%Y%m%d%H"))
+  temp <- user_data[(order(user_data$time)), ]
+  titleId <- temp[length(temp$time), ]$title_id
+  output[1, 'user_id'] <- temp$user_id[1]
+  output[1, 'title_id'] <- titleId
+  print(titleId)
   output
 }))
-lapply(mylist, function(y) {
-  output <- data.frame()
-  class(y)
-  # temp <- user_data[(order(format(anytime(user_data$time), format="%Y%m%d%H"))), ]
-  # titleId <- temp[length(temp$time), ]$title_id
-  # output[1, 'user_id'] <- user_data$user_id
-  # output[1, 'title_id'] <- titleId
-  class(y$title_id)
-})
 
+investigate <- haha1[(haha1[haha1$user_id == label_set1$user_id, ]$title_id == label_set1$title_id), ]
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
-result$user_id[1]
-userData <- getDataByUserIdFun(sortedTest, 29)
-class(df_video_meta$themes)
-df_video_meta$themes
+
 haha <- df_video_meta[grepl("音樂", df_video_meta$themes), ]
 #### To calculate system time ####
 old <- Sys.time() # get start time
