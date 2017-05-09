@@ -331,12 +331,28 @@ recommendationVideo2017 <- getRecommendationVideoMetaFun(beautiful_meta, labels_
 global.env <- new.env()
 global.env$video_meta <- beautiful_meta
 global.env$recommend <- recommendationVideo2017
+global.env$mean_watched_time <- 1600
+global.env$observer_user_id <- vector()
+global.env$labels_result <- labels_train
+
 mylist <- split(formated_event_test, formated_event_test$user_id)
 
-for(i in 2:2)  {
-  print(i)
-}
 #Parameter list of formated time data
+  
+getRecommendTitleIdFun <- function(favorite_country, recommend, watched_video, default_title) {
+  recommendVideos <- recommend[grepl(favorite_country, recommend$country), ]
+  #Remove watched video
+  recommendVideos <- recommendVideos[!(recommendVideos$title_id %in% watched_video), ]
+  #Order
+  recommendVideos <- recommendVideos[with(recommendVideos, order(-Freq)), ]
+  if(nrow(recommendVideos) > 0) {
+    return(recommendVideos$title_id[1])
+  }
+  else {
+    return (default_title)
+  }
+}
+
 system.time( {
   for(i in 2:2)  {
     global.env$episode_count <- i
@@ -346,6 +362,7 @@ system.time( {
         output <- data.frame()
         
         sortedTimeData <- user_data[(order(user_data$time)), ]
+        historyWatchedVideo <- sortedTimeData
         titleId <- sortedTimeData[length(sortedTimeData$time), ]$title_id
         userId <- sortedTimeData$user_id[1]
         #default
@@ -355,7 +372,7 @@ system.time( {
         video_meta <- get('video_meta', envir=global.env)
         recommend <- get('recommend', envir=global.env)
         LIMIT_EPISODE <- get('episode_count', envir=global.env)
-        
+
         videos2016 <- unique(sortedTimeData$title_id)
         
         if(length(videos2016) == 1) { # Legacy 
@@ -376,14 +393,29 @@ system.time( {
           video <- video_meta[video_meta$title_id == titleId, ]
           
           #Single Video
-          if(video$total_episode_counts == 1) { 
-            sortedTimeData <- sortedTimeData[sortedTimeData$title_id != titleId, ]
-            watchedHistoryCount <- nrow(sortedTimeData)
-            if(watchedHistoryCount > 0) {
+          if(video$total_episode_counts == 1) {
+            
+            repeat{
+              sortedTimeData <- sortedTimeData[sortedTimeData$title_id != titleId, ]
+              watchedHistoryCount <- nrow(sortedTimeData)
+
+              if(watchedHistoryCount == 0) {
+                
+                titleId <- getRecommendTitleIdFun(video$country, recommendationVideo2017, unique(historyWatchedVideo$title_id) , titleId)
+                cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
+                output[1, 'title_id'] <- titleId
+                break
+              }
+              
               titleId <- sortedTimeData[watchedHistoryCount, ]$title_id
-              output[1, 'title_id'] <- titleId
-              cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
+              video <- video_meta[video_meta$title_id == titleId, ]
+              if(!(video$total_episode_counts == 1)) {
+                #cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
+                output[1, 'title_id'] <- titleId
+                break
+              }
             }
+
           }
           
         }
@@ -396,8 +428,46 @@ system.time( {
   
 })
 
-temp <- getVideoMetaByTitleIdsFun(recommendationVideo2017, 628)
-temp <- getDataByUserIdFun(event_test, 41137)
+system.time( {
+    output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
+      mylist <- split(train_set, train_set$user_id)
+      do.call(rbind.data.frame, lapply(mylist, function(user_data) {
+        output <- data.frame()
+        sortedTimeData <- user_data[(order(user_data$time)), ]
+        historyWatchedVideo <- sortedTimeData
+        titleId <- sortedTimeData[nrow(sortedTimeData), ]$title_id
+        userId <- sortedTimeData$user_id[1]
+        output[1, 'title_id'] <- titleId  
+        output[1, 'user_id'] <- userId
+        
+        result <- get('labels_result', envir=global.env)
+        
+        result_titleId <- result[result$user_id == userId, ]$title_id
+        if(result_titleId == titleId) {
+          output[1, 'group'] <- 1
+        } else {
+          if(nrow(historyWatchedVideo[historyWatchedVideo$title_id == result_titleId, ]) > 1) {
+            cat(sprintf("Group 2 (user_id) %s \n", userId))
+            output[1, 'group'] <- 2  
+          } else {
+            #cat(sprintf("Group 3 (user_id) %s \n", userId))
+            output[1, 'group'] <- 3 
+          }
+        }
+        
+        output
+      }))
+    }))
+})
+nrow(output[output$group == 1, ])
+cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
+
+output$title_id <- 669
+compareResultFun(output, labels_train)
+temp <- getVideoMetaByTitleIdsFun(beautiful_meta, 541)
+
+temp <- labels_train[labels_train$user_id  %in%  c(54653, 69484), ]
+temp1 <- recommendationVideo2017[recommendationVideo2017$title_id  %in%  temp$title_id, ]
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
