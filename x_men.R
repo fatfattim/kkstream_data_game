@@ -276,18 +276,18 @@ beautiful_meta[beautiful_meta$country == "不使用", ]
 names(beautiful_meta)
 
 #### To seperate group ####
-train_set1 <- subset(event_train, event_train$user_id <= 57116)
-train_set1$time <- gsub("[^0-9]", "", train_set1$time)
-train_set1$time <- as.numeric(train_set1$time)
+formated_event_train <- event_train
+formated_event_train$time <- gsub("[^0-9]", "", formated_event_train$time)
+formated_event_train$time <- as.numeric(formated_event_train$time)
 
+train_set1 <- subset(formated_event_train, formated_event_train$user_id <= 57116)
 label_set1 <- subset(labels_train, labels_train$user_id <= 57116)
 
-train_set2 <- subset(event_train, event_train$user_id > 57116 & event_train$user_id <= 72692)
-train_set3 <- subset(event_train, event_train$user_id > 72692 & event_train$user_id <= 88268)
-train_set4 <- subset(event_train, event_train$user_id > 88268)
-#check sum
-nrow(train_set1) + nrow(train_set2) + nrow(train_set3) + nrow(train_set4) 
-train_set1$time <- format(anytime(train_set1$time), format="%Y%m%d%H")
+train_set2 <- subset(formated_event_train, formated_event_train$user_id > 57116 & formated_event_train$user_id <= 72692)
+train_set3 <- subset(formated_event_train, formated_event_train$user_id > 72692 & formated_event_train$user_id <= 88268)
+train_set4 <- subset(formated_event_train, formated_event_train$user_id > 88268)
+
+train_set_list <- list(train_set1, train_set2, train_set3, train_set4)
 
 #This performance is better than getResultByLastWatchedTitleId function
 mylist <- split(train_set1, train_set1$user_id)
@@ -302,24 +302,29 @@ haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
   output
 }))
 
-investigate <- label_set1[(haha1[haha1$user_id == label_set1$user_id, ]$title_id != label_set1$title_id), ]
-
-result <- train_set1[train_set1$user_id %in% investigate$user_id[2], ]
-
 #### To build recommendation data ####
 
 # filter by train data
-recommendationVideo2017 <- beautiful_meta[beautiful_meta$title_id %in% unique(labels_train$title_id), ]
-# filter by na data
-recommendationVideo2017 <- recommendationVideo2017[!is.na(recommendationVideo2017$country), ]
-# merge to get Freq, we use it to be rating 
-recommendationVideo2017 <- merge(recommendationVideo2017, famous2017, "title_id") 
-names(recommendationVideo2017)
+getRecommendationVideoMetaFun <- function(videoMeta, result) {
+  output <- videoMeta[videoMeta$title_id %in% unique(result$title_id), ]
+  # filter by na data
+  output <- output[!is.na(output$country), ]
+  # To get famous data
+  famous <- famousVideoFun(result)
+  # merge to get Freq, we use it to be rating 
+  return(merge(output, famous, "title_id"))
+}
+
+recommendationVideo2017 <- getRecommendationVideoMetaFun(beautiful_meta, labels_train)
 
 #### Train Model depends on group data####
 global.env <- new.env()
 global.env$video_meta <- beautiful_meta
 global.env$recommend <- recommendationVideo2017
+
+lapply(train_set_list, function(set) {
+  print(nrow(set))
+})
 
 haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
   output <- data.frame()
