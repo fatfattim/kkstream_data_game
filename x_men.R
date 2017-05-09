@@ -277,23 +277,39 @@ names(beautiful_meta)
 
 #### To seperate group ####
 train_set1 <- subset(event_train, event_train$user_id <= 57116)
+train_set1$time <- gsub("[^0-9]", "", train_set1$time)
+train_set1$time <- as.numeric(train_set1$time)
+
+label_set1 <- subset(labels_train, labels_train$user_id <= 57116)
+
 train_set2 <- subset(event_train, event_train$user_id > 57116 & event_train$user_id <= 72692)
 train_set3 <- subset(event_train, event_train$user_id > 72692 & event_train$user_id <= 88268)
 train_set4 <- subset(event_train, event_train$user_id > 88268)
 #check sum
 nrow(train_set1) + nrow(train_set2) + nrow(train_set3) + nrow(train_set4) 
-
-train_set1['user_type'] <- 0
-train_set1['favorite_type'] <- NA
+train_set1$time <- format(anytime(train_set1$time), format="%Y%m%d%H")
 mylist <- split(train_set1, train_set1$user_id)
-unique(beautiful_meta$country)
 
-haha1 <- do.call(rbind.data.frame, lapply(mylist, function(y) {
+haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
   output <- data.frame()
-  output[1, 'user_id'] <- 0
-  output[1, 'title_id'] <- 1
+  class(user_data)
+  temp <- user_data[(order(format(anytime(user_data$time), format="%Y%m%d%H"))), ]
+  # titleId <- temp[length(temp$time), ]$title_id
+  # output[1, 'user_id'] <- user_data$user_id
+  # output[1, 'title_id'] <- titleId
+  print(format(anytime(user_data$time), format="%Y%m%d%H"))
   output
 }))
+lapply(mylist, function(y) {
+  output <- data.frame()
+  class(y)
+  # temp <- user_data[(order(format(anytime(user_data$time), format="%Y%m%d%H"))), ]
+  # titleId <- temp[length(temp$time), ]$title_id
+  # output[1, 'user_id'] <- user_data$user_id
+  # output[1, 'title_id'] <- titleId
+  class(y$title_id)
+})
+
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
