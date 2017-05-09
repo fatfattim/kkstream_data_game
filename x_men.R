@@ -276,9 +276,15 @@ beautiful_meta[beautiful_meta$country == "不使用", ]
 names(beautiful_meta)
 
 #### To seperate group ####
+
+formatTimeFun <- function(df) {
+  df$time <- gsub("[^0-9]", "", df$time)
+  df$time <- as.numeric(df$time)
+  return(df)
+}
+
 formated_event_train <- event_train
-formated_event_train$time <- gsub("[^0-9]", "", formated_event_train$time)
-formated_event_train$time <- as.numeric(formated_event_train$time)
+formated_event_test <- formatTimeFun(event_test)
 
 train_set1 <- subset(formated_event_train, formated_event_train$user_id <= 57116)
 label_set1 <- subset(labels_train, labels_train$user_id <= 57116)
@@ -287,8 +293,12 @@ train_set2 <- subset(formated_event_train, formated_event_train$user_id > 57116 
 train_set3 <- subset(formated_event_train, formated_event_train$user_id > 72692 & formated_event_train$user_id <= 88268)
 train_set4 <- subset(formated_event_train, formated_event_train$user_id > 88268)
 
-train_set_list <- list(train_set1, train_set2, train_set3, train_set4)
+summary(output_sample)
+test_set1 <- subset(formated_event_test, formated_event_test$user_id <= 20769)
+test_set2 <- subset(formated_event_test, formated_event_test$user_id > 20769)
 
+train_set_list <- list(train_set1, train_set2, train_set3, train_set4)
+train_set_list <- list(test_set1, test_set2)
 #This performance is better than getResultByLastWatchedTitleId function
 mylist <- split(train_set1, train_set1$user_id)
 haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
@@ -321,47 +331,77 @@ recommendationVideo2017 <- getRecommendationVideoMetaFun(beautiful_meta, labels_
 global.env <- new.env()
 global.env$video_meta <- beautiful_meta
 global.env$recommend <- recommendationVideo2017
+mylist <- split(formated_event_test, formated_event_test$user_id)
 
+for(i in 2:2)  {
+  print(i)
+}
+#Parameter list of formated time data
 system.time( {
-output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
-  mylist <- split(train_set, train_set$user_id)
-  do.call(rbind.data.frame, lapply(mylist, function(user_data) {
-    output <- data.frame()
-    sortedTimeData <- user_data[(order(user_data$time)), ]
-    titleId <- sortedTimeData[length(sortedTimeData$time), ]$title_id
-    userId <- sortedTimeData$user_id[1]
-    #default
-    output[1, 'title_id'] <- titleId  
-    output[1, 'user_id'] <- userId
-    # Watched Only one video, and this video is episode
-    video_meta <- get('video_meta', envir=global.env)
-    recommend <- get('recommend', envir=global.env)
+  for(i in 2:2)  {
+    global.env$episode_count <- i
+    output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
+      mylist <- split(train_set, train_set$user_id)
+      do.call(rbind.data.frame, lapply(mylist, function(user_data) {
+        output <- data.frame()
+        
+        sortedTimeData <- user_data[(order(user_data$time)), ]
+        titleId <- sortedTimeData[length(sortedTimeData$time), ]$title_id
+        userId <- sortedTimeData$user_id[1]
+        #default
+        output[1, 'title_id'] <- titleId  
+        output[1, 'user_id'] <- userId
+        # Watched Only one video, and this video is episode
+        video_meta <- get('video_meta', envir=global.env)
+        recommend <- get('recommend', envir=global.env)
+        LIMIT_EPISODE <- get('episode_count', envir=global.env)
+        
+        videos2016 <- unique(sortedTimeData$title_id)
+        
+        if(length(videos2016) == 1) { # Legacy 
+          # episode_count <- video_meta[video_meta$title_id == titleId, ]$total_episode_counts
+          # 
+          # if(episode_count < LIMIT_EPISODE) {
+          #   #cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
+          #   #Look country, give highest one, and check user see it or not
+          #   favoriteCountry <- video_meta[video_meta$title_id == titleId, ]$country
+          #   recommendVideos <- recommend[grepl(favoriteCountry, recommend$country), ]
+          #   #Remove watched video
+          #   recommendVideos <- recommendVideos[recommendVideos$title_id != titleId, ]
+          #   #Order
+          #   recommendVideos <- recommendVideos[with(recommendVideos, order(-Freq)), ]
+          #   output[1, 'title_id'] <- recommendVideos$title_id[1]
+          # }
+        } else {
+          video <- video_meta[video_meta$title_id == titleId, ]
+          
+          #Single Video
+          if(video$total_episode_counts == 1) { 
+            sortedTimeData <- sortedTimeData[sortedTimeData$title_id != titleId, ]
+            watchedHistoryCount <- nrow(sortedTimeData)
+            if(watchedHistoryCount > 0) {
+              titleId <- sortedTimeData[watchedHistoryCount, ]$title_id
+              output[1, 'title_id'] <- titleId
+              cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
+            }
+          }
+          
+        }
+        output
+      }))
+    }))
     
-    if(length(unique(sortedTimeData$title_id)) == 1) {
-      episode_count <- video_meta[video_meta$title_id == titleId, ]$total_episode_counts
-      
-      if(episode_count < 2) {
-        cat(sprintf("(titleId, userId) %s %s\n", titleId, userId))
-        #Look country, give highest one, and check user see it or not
-        favoriteCountry <- video_meta[video_meta$title_id == titleId, ]$country
-        recommendVideos <- recommend[grepl(favoriteCountry, recommend$country), ]
-        #Remove watched video
-        recommendVideos <- recommendVideos[recommendVideos$title_id != titleId, ]
-        #Order
-        recommendVideos <- recommendVideos[with(recommendVideos, order(-Freq)), ]
-        output[1, 'title_id'] <- recommendVideos$title_id[1]
-      }
-    }
-    output
-  }))
-}))
-
+    cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
+  }
+  
 })
+
+temp <- getVideoMetaByTitleIdsFun(recommendationVideo2017, 628)
+temp <- getDataByUserIdFun(event_test, 41137)
+
 # Group data by table way
 # as.data.frame(table(result$title_id))
-compareResultFun(temp, labels_train)
 
-haha <- df_video_meta[grepl("音樂", df_video_meta$themes), ]
 #### To calculate system time ####
 old <- Sys.time() # get start time
 # method here
@@ -379,4 +419,4 @@ summary(unique(event_test[c("user_id")]))
 output <- beautiful_meta
 output$user_id <- str_pad(output$user_id, 8, pad = "0")
 output$title_id <- str_pad(output$title_id, 8, pad = "0")
-write.csv(output, file = "~/Desktop/data_game/beautiful_meta.csv", row.names=FALSE,  quote = FALSE)
+write.csv(output, file = "~/Desktop/data_game/upload.csv", row.names=FALSE,  quote = FALSE)
