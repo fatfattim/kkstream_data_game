@@ -288,19 +288,70 @@ train_set4 <- subset(event_train, event_train$user_id > 88268)
 #check sum
 nrow(train_set1) + nrow(train_set2) + nrow(train_set3) + nrow(train_set4) 
 train_set1$time <- format(anytime(train_set1$time), format="%Y%m%d%H")
-mylist <- split(train_set1, train_set1$user_id)
 
+#This performance is better than getResultByLastWatchedTitleId function
+mylist <- split(train_set1, train_set1$user_id)
 haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
   output <- data.frame()
   temp <- user_data[(order(user_data$time)), ]
   titleId <- temp[length(temp$time), ]$title_id
+  #Get last watched video
   output[1, 'user_id'] <- temp$user_id[1]
   output[1, 'title_id'] <- titleId
   print(titleId)
   output
 }))
 
-investigate <- haha1[(haha1[haha1$user_id == label_set1$user_id, ]$title_id == label_set1$title_id), ]
+investigate <- label_set1[(haha1[haha1$user_id == label_set1$user_id, ]$title_id != label_set1$title_id), ]
+
+result <- train_set1[train_set1$user_id %in% investigate$user_id[2], ]
+
+#### To build recommendation data ####
+
+# filter by train data
+recommendationVideo2017 <- beautiful_meta[beautiful_meta$title_id %in% unique(labels_train$title_id), ]
+# filter by na data
+recommendationVideo2017 <- recommendationVideo2017[!is.na(recommendationVideo2017$country), ]
+# merge to get Freq, we use it to be rating 
+recommendationVideo2017 <- merge(recommendationVideo2017, famous2017, "title_id") 
+names(recommendationVideo2017)
+
+#### Train Model depends on group data####
+global.env <- new.env()
+global.env$video_meta <- beautiful_meta
+global.env$recommend <- recommendationVideo2017
+
+haha1 <- do.call(rbind.data.frame, lapply(mylist, function(user_data) {
+  output <- data.frame()
+  sortedTimeData <- user_data[(order(user_data$time)), ]
+  titleId <- sortedTimeData[length(sortedTimeData$time), ]$title_id
+  #default
+  output[1, 'title_id'] <- titleId  
+  output[1, 'user_id'] <- sortedTimeData$user_id[1]
+  # Watched Only one video, and this video is episode
+  video_meta <- get('video_meta', envir=global.env)
+  recommend <- get('recommend', envir=global.env)
+
+  if(length(unique(sortedTimeData$title_id)) == 1) {
+    episode_count <- video_meta[video_meta$title_id == titleId, ]$total_episode_counts
+
+    if(episode_count < 2) {
+      cat(sprintf("(titleId, episode_count) %s %s\n", titleId, episode_count))
+      #Look country, give highest one, and check user see it or not
+      favoriteCountry <- video_meta[video_meta$title_id == titleId, ]$country
+      recommendVideos <- recommend[grepl(favoriteCountry, recommendationVideo2017$country), ]
+      #Remove watched video
+      recommendVideos <- recommendVideos[recommendVideos$title_id != titleId, ]
+      #Order
+      recommendVideos <- recommendVideos[with(recommendVideos, order(-Freq)), ]
+      output[1, 'title_id'] <- recommendVideos[1]
+    }
+  }
+  output
+}))
+
+investigate <- label_set1[(haha2[haha2$user_id == label_set1$user_id, ]$title_id == label_set1$title_id), ]
+investigate1 <- label_set1[(haha1[haha1$user_id == label_set1$user_id, ]$title_id == label_set1$title_id), ]
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
