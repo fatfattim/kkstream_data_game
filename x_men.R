@@ -273,6 +273,7 @@ beautiful_meta$title_id <- as.integer(beautiful_meta$title_id)
 drops <- c("title_type","content_providers" , "copyright", "ordered_casts", "is_ending", "updated_at", "reverse_display_order", "content_agents" , "stills" , "tags" , "title_aliases", "wiki_zh" , "extra_title_id" , "characteristic" , "cover", "ost" , "producers", "wiki_orig", "has_series")
 beautiful_meta <- beautiful_meta[ , !(names(beautiful_meta) %in% drops)]
 beautiful_meta[beautiful_meta$country == "不使用", ]
+
 names(beautiful_meta)
 
 #### To seperate group ####
@@ -534,11 +535,11 @@ system.time( {
         video_meta <- get('video_meta', envir=global.env)
         userId <- user_data$user_id[1]
         output[1, 'user_id'] <- userId
-        n <- 11 #get('episode_count', envir=global.env)
+        n <- 1 #get('episode_count', envir=global.env)
         titleId <- kingOf2017Fun(user_data, video_meta, n)
         output[1, 'title_id'] <- titleId
         #cat(sprintf("(userId, titleId) %s %s\n", userId, titleId))
-        output <- getGroupIdFun(output, user_data)
+        #output <- getGroupIdFun(output, user_data)
         output
       }))
     }))
@@ -567,29 +568,37 @@ getMergedDFWithResultFun <- function(sampleUserIds , event_train, labels_train) 
   return(oneMergedData[order(oneMergedData$user_id, oneMergedData$time), ])
 }
 
-oneMergedData <- getMergedDFWithResultFun(sampleUserIds, event_train, labels_train, beautiful_meta)
-titleIds <- kingOf2017Fun(oneMergedData[oneMergedData$user_id == 49334 , ], beautiful_meta, 11)
-verifyFun(sampleUserIds, event_train, labels_train)
+oneMergedData <- getMergedDFWithResultFun(sampleUserIds, event_train, labels_train)
+titleIds <- kingOf2017Fun(oneMergedData[oneMergedData$user_id == 49334 , ], beautiful_meta, 1)
+
+video <- beautiful_meta[beautiful_meta$title_id %in% 66, ]
+
+
+sampleUserIds <-sampleResult[sample(nrow(sampleResult), 1000), ]
+oneOutput <- verifyFun(sampleUserIds, event_train, labels_train)
+
+oneUserData <- event_train[event_train$user_id %in% 47538, ]
+titleId <- kingOf2017Fun(oneUserData, beautiful_meta, 1)
+oneUserData <- event_train[event_train$user_id %in% 47538, ]
 
 verifyFun <- function(sampleUserIds, event_train, labels_train) {
   output <- data.frame()
   oneUserData <- event_train[event_train$user_id %in% sampleUserIds$user_id, ]
   i <- 1
   for(userId in sampleUserIds$user_id) {
-    cat(sprintf("(userId) %s\n", userId))
-    titleId <- kingOf2017Fun(oneUserData[oneUserData$user_id %in% userId , ], beautiful_meta, 11)
+    titleId <- kingOf2017Fun(oneUserData[oneUserData$user_id %in% userId , ], beautiful_meta, 1)
     output[i , 'user_id'] <- userId
     output[i , 'title_id'] <- titleId
     i <- i + 1
   }
   
   result <- labels_train[labels_train$user_id %in% sampleUserIds$user_id, ]
-  
-  print(compareResultFun(output ,result))
+  colnames(result)[2] <- "result"
+  mergeData <-merge(output, result, "user_id", all = TRUE)
+  print(nrow(mergeData[mergeData$title_id == mergeData$result, ]) / nrow(mergeData))
+  #return(nrow(mergeData[mergeData$title_id == mergeData$result, ]) / nrow(mergeData))
+  return(mergeData)
 }
-
-
-video <- beautiful_meta[beautiful_meta$title_id %in% 66, ]
   
 kingOf2017Fun <- function(user_data, video_meta, n) {
   titleIds <- unique(user_data$title_id)
@@ -610,18 +619,31 @@ kingOf2017Fun <- function(user_data, video_meta, n) {
     total_watched_time <- sum( user_data[user_data$title_id == titleId, ]$watch_time)
     output[i, 'title_id'] <- titleId
     output[i, 'total_watched_time'] <- total_watched_time
-    one_video_time <- n * 10 + 10
+    one_video_time <- n * 10 + 40
     total_time <- video$total_episode_counts * one_video_time * 60
     output[i, 'total_time'] <- total_time
     output[i, 'total_episode_counts'] <- video$total_episode_counts
-    output[i, 'weight'] <- total_watched_time
+    ratio <- total_watched_time / total_time
+    
+    if(ratio > 0.6 ) { #watched
+      output[i , 'weight'] <- 0
+      
+    } else if ( ratio < 0.01) {
+      output[i , 'weight'] <- 0
+      
+    } else {
+      output[i , 'weight'] <- total_watched_time
+      
+    }
+    
     i <- i + 1
   }
 
+  
   output <- output[order(-output$weight), ]
 
   return(output$title_id[1])
-  #  return(output)
+  #return(output)
 }
 
 
