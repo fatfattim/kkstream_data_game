@@ -428,6 +428,7 @@ system.time( {
   
 })
 
+#To get group
 system.time( {
     output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
       mylist <- split(train_set, train_set$user_id)
@@ -459,15 +460,63 @@ system.time( {
       }))
     }))
 })
-nrow(output[output$group == 1, ])
+
+#to Train model
+system.time( {
+  for(i in 3:8)  {
+    global.env$episode_count <- i
+  output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
+    mylist <- split(train_set, train_set$user_id)
+    do.call(rbind.data.frame, lapply(mylist, function(user_data) {
+      output <- data.frame()
+      sortedTimeData <- user_data[(order(user_data$time)), ]
+      userId <- sortedTimeData$user_id[1]
+      output[1, 'user_id'] <- userId
+      result <- get('labels_result', envir=global.env)
+      video_meta <- get('video_meta', envir=global.env)
+
+      temp <- sortedTimeData
+      repeat {
+        
+        if(nrow(temp) < 1) {
+          break;
+        }
+        titleId <- temp[nrow(temp), ]$title_id
+
+        output[1, 'title_id'] <- titleId
+        titleIds_length <- length(unique(temp$title_id))
+
+        if(titleIds_length > 1) {
+          video <- video_meta[video_meta$title_id == titleId, ]
+          time <- get('episode_count', envir=global.env) * 10 + 60
+          n <- get('episode_count', envir=global.env)
+          video_totall_duration <- video$total_episode_counts * time * 60
+          
+          watched_duration <- sum(temp[temp$title_id == titleId, ]$watch_time)
+        
+          #User had been watched this video
+          if(video$total_episode_counts < n) {
+            #cat(sprintf("(user_id, previous_title_id) %s %s\n", userId, titleId))
+            #cat(sprintf("(video_totall_duration, watched_duration) %s %s\n", video_totall_duration, watched_duration))
+            temp <- temp[temp$title_id != titleId, ]
+
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+        
+      }
+
+      output
+    }))
+  }))
+  cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
+  }
+})
+
 cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
-
-output$title_id <- 669
-compareResultFun(output, labels_train)
-temp <- getVideoMetaByTitleIdsFun(beautiful_meta, 541)
-
-temp <- labels_train[labels_train$user_id  %in%  c(54653, 69484), ]
-temp1 <- recommendationVideo2017[recommendationVideo2017$title_id  %in%  temp$title_id, ]
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
