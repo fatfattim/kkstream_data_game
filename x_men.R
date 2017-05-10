@@ -428,6 +428,24 @@ system.time( {
   
 })
 
+getGroupIdFun <- function(output, historyWatchedVideo) {
+  result <- get('labels_result', envir=global.env)
+  result_titleId <- result[result$user_id == output$user_id, ]$title_id
+  if(result_titleId == output$title_id) {
+    cat(sprintf("Group 1 (user_id) %s \n", output$user_id))
+    output[1, 'group'] <- 1
+  } else {
+    if(nrow(historyWatchedVideo[historyWatchedVideo$title_id == result_titleId, ]) > 1) {
+      cat(sprintf("Group 2 (user_id) %s \n", output$user_id))
+      
+      output[1, 'group'] <- 2  
+    } else {
+      cat(sprintf("Group 3 (user_id) %s \n", output$user_id))
+      output[1, 'group'] <- 3 
+    }
+  }
+  return (output)
+}
 #To get group
 system.time( {
     output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
@@ -441,21 +459,21 @@ system.time( {
         output[1, 'title_id'] <- titleId  
         output[1, 'user_id'] <- userId
         
-        result <- get('labels_result', envir=global.env)
-        
-        result_titleId <- result[result$user_id == userId, ]$title_id
-        if(result_titleId == titleId) {
-          output[1, 'group'] <- 1
-        } else {
-          if(nrow(historyWatchedVideo[historyWatchedVideo$title_id == result_titleId, ]) > 1) {
-            cat(sprintf("Group 2 (user_id) %s \n", userId))
-            output[1, 'group'] <- 2  
-          } else {
-            #cat(sprintf("Group 3 (user_id) %s \n", userId))
-            output[1, 'group'] <- 3 
-          }
-        }
-        
+        # result <- get('labels_result', envir=global.env)
+        # 
+        # result_titleId <- result[result$user_id == userId, ]$title_id
+        # if(result_titleId == titleId) {
+        #   output[1, 'group'] <- 1
+        # } else {
+        #   if(nrow(historyWatchedVideo[historyWatchedVideo$title_id == result_titleId, ]) > 1) {
+        #     cat(sprintf("Group 2 (user_id) %s \n", userId))
+        #     output[1, 'group'] <- 2  
+        #   } else {
+        #     #cat(sprintf("Group 3 (user_id) %s \n", userId))
+        #     output[1, 'group'] <- 3 
+        #   }
+        # }
+        output <- getGroupIdFun(output, historyWatchedVideo)
         output
       }))
     }))
@@ -463,7 +481,7 @@ system.time( {
 
 #to Train model
 system.time( {
-  for(i in 3:8)  {
+  for(i in 3:3)  {
     global.env$episode_count <- i
   output <- do.call(rbind.data.frame, lapply(train_set_list, function(train_set) {
     mylist <- split(train_set, train_set$user_id)
@@ -493,10 +511,12 @@ system.time( {
           video_totall_duration <- video$total_episode_counts * time * 60
           
           watched_duration <- sum(temp[temp$title_id == titleId, ]$watch_time)
-        
+          
+          #Best parameter
+          n <- 6
           #User had been watched this video
           if(video$total_episode_counts < n) {
-            #cat(sprintf("(user_id, previous_title_id) %s %s\n", userId, titleId))
+            cat(sprintf("(user_id, previous_title_id) %s %s\n", userId, titleId))
             #cat(sprintf("(video_totall_duration, watched_duration) %s %s\n", video_totall_duration, watched_duration))
             temp <- temp[temp$title_id != titleId, ]
 
@@ -509,14 +529,17 @@ system.time( {
         
       }
 
+      output <- getGroupIdFun(output, sortedTimeData)
       output
     }))
   }))
   cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
   }
 })
+table(original_group$group) / 62307
 
-cat(sprintf("(n, result) %s %s\n", i, compareResultFun(output, labels_train)))
+oneUserData <- event_train[event_train$user_id == 42443, ]
+resultData <- labels_train[labels_train$user_id == 42443, ]
 
 # Group data by table way
 # as.data.frame(table(result$title_id))
